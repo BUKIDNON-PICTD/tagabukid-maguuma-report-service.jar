@@ -1,0 +1,184 @@
+import com.rameses.annotations.*
+import com.rameses.common.*;
+import com.rameses.services.extended.*;
+
+class TagabukidMaguumaReportService
+{
+    @ActiveDB(value='maguumareports', em='testpagri')
+    def em
+
+    @ActiveDB(value='maguumareports', em='main')
+    def emmain
+
+    @Service('NumberService')
+    def numberSvc
+
+    @Env 
+    def env 
+        
+    @ProxyMethod
+    public def getFarmersListByCommodity(params) {
+
+        params.lguid = (params.lgu ? params.lgu.objid :'%')
+        params.barangayid = (params.barangay ? params.barangay.objid : '%')
+        params.commodityid = (params.commodity ? params.commodity.objid : '%')
+        params.commoditytypeid = (params.commoditytype ? params.commoditytype.objid : '%')
+        params.commoditysubtypeid = (params.commoditysubtype ? params.commoditysubtype.objid : '%')
+        params.tsid = (params.ts ? params.ts.tenurialstatus : '%')
+
+        params.filter = '''pfi.address_barangay_parent_objid LIKE $P{lguid}
+        AND pfi.address_barangay_objid LIKE $P{barangayid}
+        AND pfi.commodity_objid LIKE $P{commodityid}
+        AND pfi.commoditytype_objid LIKE $P{commoditytypeid}
+        AND pfi.tenurialstatus LIKE $P{tsid} '''
+        if (params.commoditysubtypeid != '%'){
+        params.filter += '''AND pfi.commoditysubtype_objid LIKE $P{commoditysubtypeid}'''
+        }
+
+        def list = em.getFarmersListByCommodity(params)
+        if (!list) throw new Exception('There are no records found.')
+
+        list.each{
+            if (it.commoditytypeunit == 'AREA'){
+                it.qty = numberSvc.format('#,##0.0000', it.qty)
+                it.qty += ' Ha.'
+            }else{
+                it.qty = numberSvc.format('#,##0', it.qty)
+                it.qty += ''
+            }
+        }
+      
+        def p = [
+            TITLE    : 'Masterlist of Farmers by Commodity',
+            //SUBTITLE : subtitle, 
+            MUN : (params.lgu ?  params.lgu.name : "ALL"),
+            BRGY : (params.barangay ?  params.barangay.name : "ALL"),
+            COMMODITY :(params.commodity ?  params.commodity.name : "ALL"),
+            COMMODITYTYPE :(params.commoditytype ?  params.commoditytype.name : "ALL"),
+            COMMODITYSUBTYPE :(params.commoditysubtype ?  params.commoditysubtype.name : "ALL"),
+            TENURIALSTATUS :(params.ts ?  params.ts.tenurialstatus : "ALL"),
+        ]
+
+        return [
+            parameters  : p,
+            reportdata  : list
+        ]
+    }
+
+    @ProxyMethod
+    public def getCommodityList(params) {
+
+        params.lguid = (params.lgu ? params.lgu.objid :'%')
+        params.barangayid = (params.barangay ? params.barangay.objid : '%')
+        params.commodityid = (params.commodity ? params.commodity.objid : '%')
+        params.commoditytypeid = (params.commoditytype ? params.commoditytype.objid : '%')
+        params.tsid = (params.ts ? params.ts.tenurialstatus : '%')
+        
+        def list = em.getCommodityList(params)
+        if (!list) throw new Exception('There are no records found.')
+
+        list.each{
+            if (it.commoditytypeunit == 'AREA'){
+                it.totalqty = numberSvc.format('#,##0.0000', it.totalqty)
+                it.totalqty += ' Ha.'
+            }else{
+                it.totalqty = numberSvc.format('#,##0', it.totalqty)
+                it.totalqty += ''
+            }
+
+        }
+        
+        def p = [
+            TITLE    : 'Commodity Summary',
+            //SUBTITLE : subtitle, 
+            MUN : (params.lgu ?  params.lgu.name : "ALL"),
+            BRGY : (params.barangay ?  params.barangay.name : "ALL"),
+            COMMODITY :(params.commodity ?  params.commodity.name : "ALL"),
+            COMMODITYTYPE :(params.commoditytype ?  params.commoditytype.name : "ALL"),
+            TENURIALSTATUS :(params.ts ?  params.ts.tenurialstatus : "ALL"),
+        ]
+        return [
+            parameters  : p,
+            reportdata  : list
+        ]
+    }
+
+    @ProxyMethod
+    public def getFarmersList(params) {
+
+        params.lguid = (params.lgu ? params.lgu.objid :'%')
+        params.barangayid = (params.barangay ? params.barangay.objid : '%')
+
+        def list = em.getFarmersList(params)
+        if (!list) throw new Exception('There are no records found.')
+
+
+        list.each{
+            it.entity = emmain.findEntity([objid:it.farmerobjid]);
+        }
+      
+        def p = [
+            TITLE    : 'Masterlist of Farmers',
+            //SUBTITLE : subtitle, 
+            MUN : (params.lgu ?  params.lgu.name : "ALL"),
+            BRGY : (params.barangay ?  params.barangay.name : "ALL"),
+        ]
+
+        return [
+            parameters  : p,
+            reportdata  : list
+        ]
+    }
+
+     @ProxyMethod
+    public def getCommoditySummary(params) {
+        def orgclass = env.ORGCLASS
+        def orgid = env.ORGID
+
+        if ('PROVINCE'.equalsIgnoreCase(orgclass)) {
+            params.org = 'PROVINCE';
+        }
+
+
+
+        params.lguid = (params.lgu ? params.lgu.objid :'%')
+        params.barangayid = (params.barangay ? params.barangay.objid : '%')
+
+        def list = em.getCommoditySummary(params)
+        if (!list) throw new Exception('There are no records found.')
+
+        def p = [
+            TITLE    : 'Municipality Commodity Summary',
+            //SUBTITLE : subtitle, 
+            MUN : (params.lgu ?  params.lgu.name : "ALL"),
+            BRGY : (params.barangay ?  params.barangay.name : "ALL"),
+            ORG : (params.org == 'PROVINCE' ?  params.org : "BARANGAY"),
+        ]
+
+        return [
+            parameters  : p,
+            reportdata  : list
+        ]
+    }
+
+    @ProxyMethod
+    public def getCommodity() {
+        return em.getCommodity();
+    }
+
+    @ProxyMethod
+    public def getCommodityType(objid) {
+        return em.getCommodityType([objid:objid]);
+    }
+
+    @ProxyMethod
+    public def getCommoditySubType(objid) {
+        return em.getCommoditySubType([objid:objid]);
+    }
+
+    @ProxyMethod
+    public def getTenurialstatus() {
+        return em.getTenurialstatus();
+    }
+
+}
