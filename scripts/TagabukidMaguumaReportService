@@ -25,13 +25,14 @@ class TagabukidMaguumaReportService
         params.commoditytypeid = (params.commoditytype ? params.commoditytype.objid : '%')
         params.commoditysubtypeid = (params.commoditysubtype ? params.commoditysubtype.objid : '%')
         params.tsid = (params.ts ? params.ts.tenurialstatus : '%')
-        def title = 'Masterlist of Farmers ';
+        def title = 'List of Farmers by Commodity';
 
         params.filter = '''pfi.address_barangay_parent_objid LIKE $P{lguid}
         AND pfi.address_barangay_objid LIKE $P{barangayid}
         AND pfi.commodity_objid LIKE $P{commodityid}
         AND pfi.commoditytype_objid LIKE $P{commoditytypeid}
         AND pfi.tenurialstatus LIKE $P{tsid} '''
+
         if (params.commoditysubtypeid != '%'){
             params.filter += '''AND pfi.commoditysubtype_objid LIKE $P{commoditysubtypeid}'''
         }
@@ -41,24 +42,24 @@ class TagabukidMaguumaReportService
             params.filter += '''AND pfi.qty BETWEEN $P{from} AND $P{to}'''
         }
 
-        params.filter += '''ORDER BY pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`, pf.`farmer_name` '''
+        params.filter += '''ORDER BY pfi.qty DESC,pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`, pf.`farmer_name` '''
 
-        if (params.limit){
-            params.filter += '''LIMIT $P{limit}'''
+        if (params.topsize){
+            params.filter += '''LIMIT $P{topsize}'''
         }
 
         def list = em.getFarmersListByCommodity(params)
         if (!list) throw new Exception('There are no records found.')
 
-        list.each{
-            if (it.commoditytypeunit == 'AREA'){
-                it.qty = numberSvc.format('#,##0.0000', it.qty)
-                it.qty += ' Ha.'
-            }else{
-                it.qty = numberSvc.format('#,##0', it.qty)
-                it.qty += ''
-            }
-        }
+        // list.each{
+        //     if (it.commoditytypeunit == 'AREA'){
+        //         it.qty = numberSvc.format('#,##0.0000', it.qty)
+        //         it.qty += ' Ha.'
+        //     }else{
+        //         it.qty = numberSvc.format('#,##0', it.qty)
+        //         it.qty += ''
+        //     }
+        // }
        
         def p = [
             TITLE    : title,
@@ -70,7 +71,7 @@ class TagabukidMaguumaReportService
             COMMODITYSUBTYPE :(params.commoditysubtype ?  params.commoditysubtype.name : "ALL"),
             TENURIALSTATUS :(params.ts ?  params.ts.tenurialstatus : "ALL"),
             RANGE :(params.to ?  params.from + " - " + params.to : "ALL"),
-            LIMIT :(params.limit ?  params.limit : "ALL"),
+            TOPSIZE :(params.topsize ?  params.topsize+"" : "ALL"),
         ]
 
         return [
@@ -91,16 +92,16 @@ class TagabukidMaguumaReportService
         def list = em.getCommodityList(params)
         if (!list) throw new Exception('There are no records found.')
 
-        list.each{
-            if (it.commoditytypeunit == 'AREA'){
-                it.totalqty = numberSvc.format('#,##0.0000', it.totalqty)
-                it.totalqty += ' Ha.'
-            }else{
-                it.totalqty = numberSvc.format('#,##0', it.totalqty)
-                it.totalqty += ''
-            }
+        // list.each{
+        //     if (it.commoditytypeunit == 'AREA'){
+        //         it.totalqty = numberSvc.format('#,##0.0000', it.totalqty)
+        //         it.totalqty += ' Ha.'
+        //     }else{
+        //         it.totalqty = numberSvc.format('#,##0', it.totalqty)
+        //         it.totalqty += ''
+        //     }
 
-        }
+        // }
         
         def p = [
             TITLE    : 'Commodity Summary',
@@ -132,7 +133,7 @@ class TagabukidMaguumaReportService
         }
       
         def p = [
-            TITLE    : 'Masterlist of Farmers',
+            TITLE    : 'Farmers Masterlist',
             //SUBTITLE : subtitle, 
             MUN : (params.lgu ?  params.lgu.name : "ALL"),
             BRGY : (params.barangay ?  params.barangay.name : "ALL"),
@@ -153,6 +154,7 @@ class TagabukidMaguumaReportService
             params.org = 'PROVINCE';
         }
 
+
         params.lguid = (params.lgu ? params.lgu.objid :'%')
         params.barangayid = (params.barangay ? params.barangay.objid : '%')
         params.commodityid = (params.commodity ? params.commodity.objid : '%')
@@ -162,13 +164,25 @@ class TagabukidMaguumaReportService
         params.filter = '''pfi.address_barangay_parent_objid LIKE $P{lguid}
         AND pfi.address_barangay_objid LIKE $P{barangayid}
         AND pfi.commodity_objid LIKE $P{commodityid}
-        AND pfi.commoditytype_objid LIKE $P{commoditytypeid}'''
+        AND pfi.commoditytype_objid LIKE $P{commoditytypeid}
+        AND pfi.tenurialstatus LIKE $P{tsid}'''
+
+        if (params.to){
+            if(!params.from) params.from = 0;
+            params.filter += '''AND pfi.qty BETWEEN $P{from} AND $P{to}'''
+        }
+
+        // params.filter += '''ORDER BY pfi.qty DESC,pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`, pf.`farmer_name` '''
+
+        if (params.topsize){
+            params.filter += '''LIMIT $P{topsize}'''
+        }
 
         def list = em.getCommoditySummary(params)
         if (!list) throw new Exception('There are no records found.')
 
         def p = [
-            TITLE    : 'Municipality Commodity Count',
+            TITLE    : params.title,
             //SUBTITLE : subtitle, 
             MUN : (params.lgu ?  params.lgu.name : "ALL"),
             BRGY : (params.barangay ?  params.barangay.name : "ALL"),
@@ -177,6 +191,9 @@ class TagabukidMaguumaReportService
             COMMODITY :(params.commodity ?  params.commodity.name : "ALL"),
             COMMODITYTYPE :(params.commoditytype ?  params.commoditytype.name : "ALL"),
             COMMODITYSUBTYPE :(params.commoditysubtype ?  params.commoditysubtype.name : "ALL"),
+            TENURIALSTATUS :(params.ts ?  params.ts.tenurialstatus : "ALL"),
+            RANGE :(params.to ?  params.from + " - " + params.to : "ALL"),
+            TOPSIZE :(params.topsize ?  params.topsize+"" : "ALL"),
         ]
 
         return [
