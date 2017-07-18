@@ -30,7 +30,7 @@ FROM test_pagrifarmer pf
     INNER JOIN test_pagricommodity_type ct ON ct.`objid` = pfi.`commoditytype_objid`
     LEFT JOIN test_pagricommodity_subtype cts ON cts.`objid` = pfi.`commoditysubtype_objid`
 WHERE ${filter}
-ORDER BY pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`, pf.`farmer_name` 
+
 
 [getCommodity]
 SELECT * FROM test_pagricommodity ORDER BY name;
@@ -88,11 +88,17 @@ SELECT * FROM entityindividual WHERE objid = $P{objid}
 SELECT pfi.objid,
 pfi.`address_text` AS addresstext,
 pfi.`address_barangay_objid` AS addressbarangayobjid,
-pfi.`address_barangay_name` AS addressbarangayname,
+CASE WHEN pfi.`address_barangay_name` IS NULL THEN "OTHERS" ELSE pfi.`address_barangay_name` END AS addressbarangayname,
 pfi.`address_barangay_parent_objid` AS addressbarangayparentobjid,
-pfi.`address_barangay_parent_name` AS addressbarangayparentname,
+CASE WHEN pfi.`address_barangay_parent_name` IS NULL THEN "OTHERS" ELSE pfi.`address_barangay_parent_name` END  AS addressbarangayparentname,
 pfi.`commodity_objid` AS commodityobjid,
 pfi.`commodity_name` AS commodityname,
+pfi.`commoditytype_objid` AS `commoditytypeobjid`,
+CASE WHEN pfi.`commoditytype_name` IS NULL THEN "OTHERS" ELSE pfi.`commoditytype_name` END AS `commoditytypename`, 
+pfi.`commoditysubtype_objid` AS `commoditysubtypeobjid`,
+CASE WHEN pfi.`commoditysubtype_name` IS NULL THEN "OTHERS" ELSE pfi.`commoditysubtype_name` END AS `commoditysubtypename`, 
+pfi.`qty` AS qty,
+ct.unit,
 1 AS commoditycount FROM test_pagrifarmeritems pfi
-WHERE pfi.`address_barangay_parent_objid` LIKE $P{lguid}
-AND pfi.`address_barangay_objid` LIKE $P{barangayid}
+INNER JOIN testpagri.test_pagricommodity_type ct ON ct.`objid` = pfi.`commoditytype_objid`
+WHERE ${filter}

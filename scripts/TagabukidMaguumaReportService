@@ -25,6 +25,7 @@ class TagabukidMaguumaReportService
         params.commoditytypeid = (params.commoditytype ? params.commoditytype.objid : '%')
         params.commoditysubtypeid = (params.commoditysubtype ? params.commoditysubtype.objid : '%')
         params.tsid = (params.ts ? params.ts.tenurialstatus : '%')
+        def title = 'Masterlist of Farmers ';
 
         params.filter = '''pfi.address_barangay_parent_objid LIKE $P{lguid}
         AND pfi.address_barangay_objid LIKE $P{barangayid}
@@ -32,7 +33,18 @@ class TagabukidMaguumaReportService
         AND pfi.commoditytype_objid LIKE $P{commoditytypeid}
         AND pfi.tenurialstatus LIKE $P{tsid} '''
         if (params.commoditysubtypeid != '%'){
-        params.filter += '''AND pfi.commoditysubtype_objid LIKE $P{commoditysubtypeid}'''
+            params.filter += '''AND pfi.commoditysubtype_objid LIKE $P{commoditysubtypeid}'''
+        }
+
+        if (params.to){
+            if(!params.from) params.from = 0;
+            params.filter += '''AND pfi.qty BETWEEN $P{from} AND $P{to}'''
+        }
+
+        params.filter += '''ORDER BY pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`, pf.`farmer_name` '''
+
+        if (params.limit){
+            params.filter += '''LIMIT $P{limit}'''
         }
 
         def list = em.getFarmersListByCommodity(params)
@@ -47,9 +59,9 @@ class TagabukidMaguumaReportService
                 it.qty += ''
             }
         }
-      
+       
         def p = [
-            TITLE    : 'Masterlist of Farmers by Commodity',
+            TITLE    : title,
             //SUBTITLE : subtitle, 
             MUN : (params.lgu ?  params.lgu.name : "ALL"),
             BRGY : (params.barangay ?  params.barangay.name : "ALL"),
@@ -57,6 +69,8 @@ class TagabukidMaguumaReportService
             COMMODITYTYPE :(params.commoditytype ?  params.commoditytype.name : "ALL"),
             COMMODITYSUBTYPE :(params.commoditysubtype ?  params.commoditysubtype.name : "ALL"),
             TENURIALSTATUS :(params.ts ?  params.ts.tenurialstatus : "ALL"),
+            RANGE :(params.to ?  params.from + " - " + params.to : "ALL"),
+            LIMIT :(params.limit ?  params.limit : "ALL"),
         ]
 
         return [
@@ -139,20 +153,30 @@ class TagabukidMaguumaReportService
             params.org = 'PROVINCE';
         }
 
-
-
         params.lguid = (params.lgu ? params.lgu.objid :'%')
         params.barangayid = (params.barangay ? params.barangay.objid : '%')
+        params.commodityid = (params.commodity ? params.commodity.objid : '%')
+        params.commoditytypeid = (params.commoditytype ? params.commoditytype.objid : '%')
+        params.tsid = (params.ts ? params.ts.tenurialstatus : '%')
+
+        params.filter = '''pfi.address_barangay_parent_objid LIKE $P{lguid}
+        AND pfi.address_barangay_objid LIKE $P{barangayid}
+        AND pfi.commodity_objid LIKE $P{commodityid}
+        AND pfi.commoditytype_objid LIKE $P{commoditytypeid}'''
 
         def list = em.getCommoditySummary(params)
         if (!list) throw new Exception('There are no records found.')
 
         def p = [
-            TITLE    : 'Municipality Commodity Summary',
+            TITLE    : 'Municipality Commodity Count',
             //SUBTITLE : subtitle, 
             MUN : (params.lgu ?  params.lgu.name : "ALL"),
             BRGY : (params.barangay ?  params.barangay.name : "ALL"),
             ORG : (params.org == 'PROVINCE' ?  params.org : "BARANGAY"),
+            TYPE :(params.commodity ?  (params.commoditytype ?  "COMMODITYSUBTYPE" : "COMMODITYTYPE") : "COMMODITY"),
+            COMMODITY :(params.commodity ?  params.commodity.name : "ALL"),
+            COMMODITYTYPE :(params.commoditytype ?  params.commoditytype.name : "ALL"),
+            COMMODITYSUBTYPE :(params.commoditysubtype ?  params.commoditysubtype.name : "ALL"),
         ]
 
         return [
