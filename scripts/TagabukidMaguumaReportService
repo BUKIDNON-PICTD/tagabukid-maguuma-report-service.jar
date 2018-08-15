@@ -48,7 +48,10 @@ class TagabukidMaguumaReportService
             params.filter += '''LIMIT $P{topsize}'''
         }
 
-        def list = em.getFarmersListByCommodity(params)
+        def list = em.getFarmersListByCommodity2(params)
+        list.each{
+            it.entity = emmain.findEntity([objid:it.farmer.objid]);
+        }
         if (!list) throw new Exception('There are no records found.')
 
         // list.each{
@@ -177,7 +180,7 @@ class TagabukidMaguumaReportService
         if (params.topsize){
             params.filter += '''LIMIT $P{topsize}'''
         }
-
+        
         def list = em.getCommoditySummary(params)
         if (!list) throw new Exception('There are no records found.')
 

@@ -1,5 +1,7 @@
 [getFarmersListByCommodity]
 SELECT 
+'BUKIDNON' AS provincename,
+SUBSTR(pfi.`address_barangay_parent_objid`,1,3) AS provincecode,
 pf.`objid` AS farmerobjid,
 pf.`farmerid`,
 pf.`farmer_objid`,
@@ -17,7 +19,7 @@ c.`name` AS commodityname,
 c.`code` AS commoditycode,
 ct.`name` AS commoditytypename,
 ct.`code` AS commoditytypecode,
-ct.`unit` AS commoditytypeunit,
+ct.`unit` AS unit,
 cts.`name` AS commoditysubtypename,
 cts.`code` AS commoditysubtypecode,
 pfi.`tenurialstatus`,
@@ -31,6 +33,39 @@ FROM test_pagrifarmer pf
     LEFT JOIN test_pagricommodity_subtype cts ON cts.`objid` = pfi.`commoditysubtype_objid`
 WHERE ${filter}
 
+[getFarmersListByCommodity2]
+SELECT 
+pf.`objid` AS farmerobjid,
+pf.`farmerid`,
+pf.`farmer_objid`,
+pf.`farmer_name` as farmername,
+pf.`farmer_address_text` as farmeraddress,
+pf.`spouse_objid`,
+pf.`spouse_name` as spousename,
+pfi.`objid` AS farmeritemobjid,
+pfi.`address_text` AS farmeritemaddress,
+pfi.`address_barangay_objid` AS farmeritembarangay,
+pfi.`address_barangay_name` AS farmeritembarangayname,
+pfi.`address_barangay_parent_objid` AS faremeritemmunicipality,
+pfi.`address_barangay_parent_name` AS faremeritemmunicipalityname,
+c.`name` AS commodityname, 
+c.`code` AS commoditycode,
+ct.`name` AS commoditytypename,
+ct.`code` AS commoditytypecode,
+ct.`unit` AS unit,
+cts.`name` AS commoditysubtypename,
+cts.`code` AS commoditysubtypecode,
+pfi.`tenurialstatus`,
+SUM(pfi.`qty`) AS qty,
+pfi.`maintainer`,
+pfi.`remarks`
+FROM test_pagrifarmer pf
+    INNER JOIN test_pagrifarmeritems pfi ON pfi.parentid = pf.`objid`
+    INNER JOIN test_pagricommodity c ON c.`objid` = pfi.`commodity_objid`
+    INNER JOIN test_pagricommodity_type ct ON ct.`objid` = pfi.`commoditytype_objid`
+    LEFT JOIN test_pagricommodity_subtype cts ON cts.`objid` = pfi.`commoditysubtype_objid`
+WHERE ${filter}
+GROUP BY pf.`farmerid`,pfi.`commodity_objid`
 
 [getCommodity]
 SELECT * FROM test_pagricommodity ORDER BY name;
@@ -81,7 +116,7 @@ WHERE pf.`farmer_address_municipalityid` LIKE $P{lguid}
 AND pf.`farmer_address_barangayid` LIKE $P{barangayid}
 
 [findEntity]
-SELECT * FROM entityindividual WHERE objid = $P{objid}
+SELECT objid,lastname,firstname,middlename,birthdate,gender FROM entityindividual WHERE objid = $P{objid}
 
 
 [getCommoditySummary]
@@ -99,6 +134,7 @@ pfi.`commoditysubtype_objid` AS `commoditysubtypeobjid`,
 CASE WHEN pfi.`commoditysubtype_name` IS NULL THEN "OTHERS" ELSE pfi.`commoditysubtype_name` END AS `commoditysubtypename`, 
 pfi.`qty` AS qty,
 ct.unit,
-1 AS commoditycount FROM test_pagrifarmeritems pfi
+COUNT(pfi.objid) AS commoditycount FROM test_pagrifarmeritems pfi
 INNER JOIN testpagri.test_pagricommodity_type ct ON ct.`objid` = pfi.`commoditytype_objid`
 WHERE ${filter}
+GROUP BY pfi.`address_barangay_parent_objid`,pfi.`address_barangay_objid`,pfi.`commodity_objid`,pfi.`commoditytype_objid`,pfi.`commoditysubtype_objid`
